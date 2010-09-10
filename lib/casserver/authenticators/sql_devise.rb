@@ -29,6 +29,7 @@ end
 #     server: localhost
 #   user_table: users
 #   username_column: username
+#   email_column: email
 #   password_column: encrypted_password
 #   salt_column: password_salt
 #   encryptor: Bcrypt
@@ -43,12 +44,14 @@ class CASServer::Authenticators::SQLDevise < CASServer::Authenticators::SQL
 
     user_model = self.class.user_model
 
-    username_column = @options[:username_column] || "username"
-    password_column = @options[:password_column] || "encrypted_password"
-    salt_column     = @options[:salt_column] || "password_salt"
+    username_column = @options[:username_column]  || "username"
+    email_column    = @options[:email_column]     || "email"
+    password_column = @options[:password_column]  || "encrypted_password"
+    salt_column     = @options[:salt_column]      || "password_salt"
 
     $LOG.debug "#{self.class}: [#{user_model}] " + "Connection pool size: #{user_model.connection_pool.instance_variable_get(:@checked_out).length}/#{user_model.connection_pool.instance_variable_get(:@connections).length}"
-    results = user_model.find(:all, :conditions => ["#{username_column} = ?", @username])
+    
+    results = user_model.find(:all, :conditions => ["#{username_column} = ? or #{email_column} = ?", @username, @username])
     user_model.connection_pool.checkin(user_model.connection)
 
     encryptor = Devise::Encryptors::Bcrypt
@@ -62,5 +65,6 @@ class CASServer::Authenticators::SQLDevise < CASServer::Authenticators::SQL
       return false
     end
   end
+
 end
 
