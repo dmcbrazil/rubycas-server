@@ -1,0 +1,58 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:             rubycas-server
+# Required-Start:       $all
+# Required-Stop:        $all
+# Default-Start:        2 3 4 5
+# Default-Stop:         0 1 6
+# Short-Description:    RubyCAS Server
+### END INIT INFO
+
+NAME=<%= application %>
+DESC=<%= application %>
+
+
+CAS_BIN=<%= server_bin_path %>
+CAS_CONFIG=<%= server_config_path %>
+CAS_PID=<%= server_pid_path %>
+set -e
+
+# Make sure the binary and the config file are present before proceeding
+test -x $CAS_BIN || exit 0
+
+. /lib/lsb/init-functions
+
+RETVAL=0
+
+case "$1" in
+  start)
+    echo -n "Starting $DESC: "
+    $CAS_BIN -c $CAS_CONFIG -P $CAS_PID start
+    RETVAL=$?
+    echo "$NAME."
+    ;;
+  stop)
+    echo -n "Stopping $DESC: "
+    $CAS_BIN -c $CAS_CONFIG -P $CAS_PID stop
+    RETVAL=$?
+    echo "$NAME."
+    ;;
+  restart)
+    echo -n "Restarting $DESC: "
+    $CAS_BIN -c $CAS_CONFIG -P $CAS_PID stop
+    $CAS_BIN -c $CAS_CONFIG -P $CAS_PID start
+    RETVAL=$?
+    echo "$NAME."
+    ;;
+  status)
+    $CAS_BIN status
+    RETVAL=$?
+    ;;
+  *)
+    echo "Usage: rubycas-server {start|stop|restart|status}"
+    exit 1
+    ;;
+esac
+
+exit $RETVAL

@@ -3,7 +3,7 @@
 require File.expand_path(File.dirname(__FILE__)+"/../lib/casserver/load_picnic")
 
 require 'picnic/service_control'
-
-ctl = Picnic::ServiceControl.new('rubycas-server')
+path = File.expand_path(File.join(File.dirname(__FILE__),'rubycas-server'))
+ctl = Picnic::ServiceControl.new(path)
 
 ctl.handle_cli_input
