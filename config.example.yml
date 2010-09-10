@@ -253,6 +253,34 @@ database:
 #  password_column: password
 #  extra_attributes: full_name, access_level
 #
+# === Devise Bcrypt Authentication =======================================================
+#
+# This is a version of the SQL authenticator that works with Devise configured to use Bcrypt.
+# Before using this, you MUST configure Devise to use Bcrypt and set the same values for config.stretches and config.pepper in config/initializers/devise.rb.
+# config.
+#
+# If you need more info on how to use Devise:
+#
+# * git://github.com/plataformatec/devise.git
+#
+# Usage:
+#
+# authenticator:
+#   class: CASServer::Authenticators::SQLDevise
+#   database:
+#     adapter: mysql
+#     database: some_database_with_users_table
+#     user: root
+#     password:
+#     server: localhost
+#   user_table: users
+#   username_column: username
+#   email_column: email
+#   password_column: encrypted_password
+#   salt_column: password_salt
+#   encryptor: Bcrypt
+#   stretches: (same as config.stretches in config/initializers/devise.rb)
+#   pepper:    (same as config.pepper    in config/initializers/devise.rb)
 #
 #
 # === Google Authentication ====================================================
