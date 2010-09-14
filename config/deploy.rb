@@ -129,6 +129,26 @@ namespace :rubycas do
   set :init_temp,   "/tmp/rubycas-server"
   set :init_remote, "/etc/init.d/rubycas-server"
   
+  desc "Starts the Rubycas service"
+  task :start, :roles => [:app] do
+    run "service rubycas-server start"
+  end
+
+  desc "Stops the Rubycas service"
+  task :stop, :roles => [:app] do
+    run "service rubycas-server stop"
+  end
+
+  desc "Restarts the Rubycas service"
+  task :restart, :roles => [:app] do
+    run "service rubycas-server restart"
+  end
+
+  desc "Shows the Rubycas service status"
+  task :status, :roles => [:app] do
+    run "service rubycas-server status"
+  end  
+  
   desc "Bootstraps rubycas to init.d"
   task :bootstrap, :roles => [:app] do
     generate_config(init_local, init_temp)
