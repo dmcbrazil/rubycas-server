@@ -35,6 +35,7 @@ end
 #   encryptor: Bcrypt
 #   stretches: (same as config.stretches in config/initializers/devise.rb)
 #   pepper:    (same as config.pepper    in config/initializers/devise.rb)
+#   extra_attributes: authentication_token
 #
 class CASServer::Authenticators::SQLDevise < CASServer::Authenticators::SQL
 
@@ -59,12 +60,20 @@ class CASServer::Authenticators::SQLDevise < CASServer::Authenticators::SQL
     if results.size > 0
       $LOG.warn("Multiple matches found for user '#{@username}'") if results.size > 1
       user = results.first
+      
+      unless @options[:extra_attributes].blank?
+        if results.size > 1
+          $LOG.warn("#{self.class}: Unable to extract extra_attributes because multiple matches were found for #{@username.inspect}")
+        else
+          extract_extra(user)
+          log_extra
+        end
+      end
 
       return encryptor.digest(@password, @options[:stretches], user.send(salt_column), @options[:pepper]) == user.send(password_column)
     else
       return false
     end
   end
-
 end
 

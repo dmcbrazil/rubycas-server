@@ -281,6 +281,7 @@ database:
 #   encryptor: Bcrypt
 #   stretches: (same as config.stretches in config/initializers/devise.rb)
 #   pepper:    (same as config.pepper    in config/initializers/devise.rb)
+#   extra_attributes: authentication_token
 #
 #
 # === Google Authentication ====================================================
