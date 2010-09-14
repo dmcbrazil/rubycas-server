@@ -33,11 +33,13 @@ end
 #   email_column: email
 #   password_column: encrypted_password
 #   salt_column: password_salt
+#   sha1_stretches: 10
+#   bcrypt_stretches: 10
 #   encryptor: Bcrypt
 #   stretches: (same as config.stretches in config/initializers/devise.rb)
 #   pepper:    (same as config.pepper    in config/initializers/devise.rb)
+#   rest_auth_site_key: REST_AUTH_SITE_KEY from Restful Authentication
 #   extra_attributes: authentication_token
-#
 #
 class CASServer::Authenticators::SQLDevise < CASServer::Authenticators::SQL
 
