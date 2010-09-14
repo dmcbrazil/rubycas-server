@@ -1,6 +1,7 @@
 require 'casserver/authenticators/sql'
 
 require File.dirname(__FILE__) + '/devise_encryptors/bcrypt'
+require File.dirname(__FILE__) + '/devise_encryptors/restful_authentication_sha1'
 
 begin
   require 'active_record'
@@ -37,6 +38,7 @@ end
 #   pepper:    (same as config.pepper    in config/initializers/devise.rb)
 #   extra_attributes: authentication_token
 #
+#
 class CASServer::Authenticators::SQLDevise < CASServer::Authenticators::SQL
 
   def validate(credentials)
@@ -45,35 +47,63 @@ class CASServer::Authenticators::SQLDevise < CASServer::Authenticators::SQL
 
     user_model = self.class.user_model
 
-    username_column = @options[:username_column]  || "username"
-    email_column    = @options[:email_column]     || "email"
-    password_column = @options[:password_column]  || "encrypted_password"
-    salt_column     = @options[:salt_column]      || "password_salt"
+    @options[:username_column]  ||= "username"
+    @options[:email_column]     ||= "email"
+    @options[:password_column]  ||= "encrypted_password"
+    @options[:salt_column]      ||= "password_salt"
 
     $LOG.debug "#{self.class}: [#{user_model}] " + "Connection pool size: #{user_model.connection_pool.instance_variable_get(:@checked_out).length}/#{user_model.connection_pool.instance_variable_get(:@connections).length}"
     
-    results = user_model.find(:all, :conditions => ["#{username_column} = ? or #{email_column} = ?", @username, @username])
+    results = user_model.find(:all, :conditions => ["#{@options[:username_column]} = ? or #{@options[:email_column]} = ?", @username, @username])
     user_model.connection_pool.checkin(user_model.connection)
 
-    encryptor = Devise::Encryptors::Bcrypt
+    return false if results.size <= 0
 
-    if results.size > 0
-      $LOG.warn("Multiple matches found for user '#{@username}'") if results.size > 1
-      user = results.first
-      
+    $LOG.warn("Multiple matches found for user '#{@username}'") if results.size > 1
+    user = results.first
+
+    encrypted_password = encrypt_password user
+
+    return false if encrypted_password != user.encrypted_password
+
+    re_encrypt_password user
+    extract_extra_attributes results
+    true
+  end
+
+  protected
+    def encrypt_password user
+      if user.last_sign_in_at.blank?
+        encryptor = Devise::Encryptors::RestfulAuthenticationSha1
+        stretches = @options[:sha1_stretches]
+        pepper = @options[:rest_auth_site_key]
+      else
+        encryptor = Devise::Encryptors::Bcrypt
+        stretches = @options[:bcrypt_stretches]
+        pepper = @options[:pepper]
+      end
+      result = encryptor.digest @password, stretches, user.send(@options[:salt_column]), pepper
+      result
+    end
+
+    def re_encrypt_password user
+      user.send("#{@options[:salt_column]}=", Devise::Encryptors::Bcrypt.salt(@options[:bcrypt_stretches]))
+      user.last_sign_in_at = Time.now
+      user.current_sign_in_at = user.last_sign_in_at
+      user.sign_in_count += 1
+      user.encrypted_password = encrypt_password(user)
+      user.save
+    end
+
+    def extract_extra_attributes results
       unless @options[:extra_attributes].blank?
         if results.size > 1
           $LOG.warn("#{self.class}: Unable to extract extra_attributes because multiple matches were found for #{@username.inspect}")
         else
-          extract_extra(user)
+          extract_extra(results.first)
           log_extra
         end
       end
-
-      return encryptor.digest(@password, @options[:stretches], user.send(salt_column), @options[:pepper]) == user.send(password_column)
-    else
-      return false
     end
-  end
 end
 
