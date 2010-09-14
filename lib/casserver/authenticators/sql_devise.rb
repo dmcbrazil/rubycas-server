@@ -90,8 +90,7 @@ class CASServer::Authenticators::SQLDevise < CASServer::Authenticators::SQL
     end
 
     def re_encrypt_password user
-      return unless user.last_sign_in_at.blank?
-      user.send("#{@options[:salt_column]}=", Devise::Encryptors::Bcrypt.salt(@options[:bcrypt_stretches]))
+      user.send("#{@options[:salt_column]}=", Devise::Encryptors::Bcrypt.salt(@options[:bcrypt_stretches])) if user.last_sign_in_at.blank?
       user.last_sign_in_at = Time.now
       user.current_sign_in_at = user.last_sign_in_at
       user.sign_in_count += 1
