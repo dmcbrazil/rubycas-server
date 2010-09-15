@@ -76,6 +76,7 @@ class CASServer::Authenticators::SQLDevise < CASServer::Authenticators::SQL
     return false unless login_ok
 
     $LOG.debug "User #{@username} credentials successfully validated."
+    update_sign_in_fields(user)
     extract_extra_attributes(results)
     true
   end
@@ -87,8 +88,9 @@ class CASServer::Authenticators::SQLDevise < CASServer::Authenticators::SQL
     
     if user.encrypted_password == encrypt_user_password_with_sha1(user)
       $LOG.debug "Login with SHA1 successfull, changing password to bcrypt..."
-      change_encrypted_password_to_bcrypt(user)
-      return true
+      password_changed = change_encrypted_password_to_bcrypt(user)
+      $LOG.debug "...password #{password_changed ? 'successfully' : 'NOT'} changed to bcrypt"
+      return password_changed
     end
     
     false
@@ -116,13 +118,16 @@ class CASServer::Authenticators::SQLDevise < CASServer::Authenticators::SQL
   end
 
   def change_encrypted_password_to_bcrypt(user)
-    user.send("#{@options[:salt_column]}=", Devise::Encryptors::Bcrypt.salt(@options[:bcrypt_stretches])) if user.last_sign_in_at.blank?
+    user.send("#{@options[:salt_column]}=", Devise::Encryptors::Bcrypt.salt(@options[:bcrypt_stretches]))
+    user.encrypted_password = encrypt_user_password_with_bcrypt(user)
+    user.save
+  end
+
+  def update_sign_in_fields(user)
     user.last_sign_in_at = Time.now
     user.current_sign_in_at = user.last_sign_in_at
     user.sign_in_count += 1
-    user.encrypted_password = encrypt_password(user)
     user.save
-    $LOG.debug "...password successfully changed to bcrypt"
   end
 
   def extract_extra_attributes results
