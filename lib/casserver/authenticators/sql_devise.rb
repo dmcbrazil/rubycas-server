@@ -64,49 +64,76 @@ class CASServer::Authenticators::SQLDevise < CASServer::Authenticators::SQL
 
     $LOG.warn("Multiple matches found for user '#{@username}'") if results.size > 1
     user = results.first
+    
+    login_ok = false
+    
+    if user.last_sign_in_at.blank?
+      login_ok = login_with_sha1_and_change_to_bcrypt(user)
+    else
+      login_ok = login_with_bcrypt(user)
+    end
+    
+    return false unless login_ok
 
-    encrypted_password = encrypt_password user
-
-    return false if encrypted_password != user.encrypted_password
-
-    re_encrypt_password user
-    extract_extra_attributes results
+    $LOG.debug "User #{@username} credentials successfully validated."
+    extract_extra_attributes(results)
     true
   end
 
   protected
-    def encrypt_password user
-      if user.last_sign_in_at.blank?
-        encryptor = Devise::Encryptors::RestfulAuthenticationSha1
-        stretches = @options[:sha1_stretches]
-        pepper = @options[:rest_auth_site_key]
+  
+  def login_with_sha1_and_change_to_bcrypt(user)
+    $LOG.debug "User #{@username} attempting to login with SHA1"
+    
+    if user.encrypted_password == encrypt_user_password_with_sha1(user)
+      $LOG.debug "Login with SHA1 successfull, changing password to bcrypt..."
+      change_encrypted_password_to_bcrypt(user)
+      return true
+    end
+    
+    false
+  end
+  
+  def login_with_bcrypt(user)
+    $LOG.debug "User #{@username} attempting to login with bcrypt"
+    user.encrypted_password == encrypt_user_password_with_bcrypt(user)
+  end
+  
+  def encrypt_user_password_with_bcrypt(user)
+    encryptor = Devise::Encryptors::Bcrypt
+    stretches = @options[:bcrypt_stretches]
+    pepper = @options[:pepper]
+
+    return encryptor.digest(@password, stretches, user.send(@options[:salt_column]), pepper)
+  end
+  
+  def encrypt_user_password_with_sha1(user)
+    encryptor = Devise::Encryptors::RestfulAuthenticationSha1
+    stretches = @options[:sha1_stretches]
+    pepper = @options[:rest_auth_site_key]
+
+    return encryptor.digest(@password, stretches, user.send(@options[:salt_column]), pepper)
+  end
+
+  def change_encrypted_password_to_bcrypt(user)
+    user.send("#{@options[:salt_column]}=", Devise::Encryptors::Bcrypt.salt(@options[:bcrypt_stretches])) if user.last_sign_in_at.blank?
+    user.last_sign_in_at = Time.now
+    user.current_sign_in_at = user.last_sign_in_at
+    user.sign_in_count += 1
+    user.encrypted_password = encrypt_password(user)
+    user.save
+    $LOG.debug "...password successfully changed to bcrypt"
+  end
+
+  def extract_extra_attributes results
+    unless @options[:extra_attributes].blank?
+      if results.size > 1
+        $LOG.warn("#{self.class}: Unable to extract extra_attributes because multiple matches were found for #{@username.inspect}")
       else
-        encryptor = Devise::Encryptors::Bcrypt
-        stretches = @options[:bcrypt_stretches]
-        pepper = @options[:pepper]
-      end
-      result = encryptor.digest @password, stretches, user.send(@options[:salt_column]), pepper
-      result
-    end
-
-    def re_encrypt_password user
-      user.send("#{@options[:salt_column]}=", Devise::Encryptors::Bcrypt.salt(@options[:bcrypt_stretches])) if user.last_sign_in_at.blank?
-      user.last_sign_in_at = Time.now
-      user.current_sign_in_at = user.last_sign_in_at
-      user.sign_in_count += 1
-      user.encrypted_password = encrypt_password(user)
-      user.save
-    end
-
-    def extract_extra_attributes results
-      unless @options[:extra_attributes].blank?
-        if results.size > 1
-          $LOG.warn("#{self.class}: Unable to extract extra_attributes because multiple matches were found for #{@username.inspect}")
-        else
-          extract_extra(results.first)
-          log_extra
-        end
+        extract_extra(results.first)
+        log_extra
       end
     end
+  end
 end
 
