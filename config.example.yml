@@ -29,8 +29,9 @@
 # or Passenger.
 
 server: webrick
-port: 443
-ssl_cert: /path/to/your/ssl.pem
+port: 5300
+#port: 443
+#ssl_cert: /path/to/your/ssl.pem
 
 # If your private key is in a separate file from the cert
 
@@ -129,7 +130,7 @@ ssl_cert: /path/to/your/ssl.pem
 # Here's an example Apache vhost config for RubyCAS-Server and Passenger:
 #
 #  Listen 443
-#  <VirtualHost *:443>
+#  <VirtualHost *:442>
 #     ServerAdmin admin@example.net
 #     ServerName login.example.net
 #
@@ -161,9 +162,8 @@ ssl_cert: /path/to/your/ssl.pem
 
 database:
   adapter: mysql
-  database: casserver
+  database: authcentral_development
   username: root
-  password: 
   host: localhost
 
 # IMPORTANT! By default, the server can handle up to ~5 concurrent requests
@@ -186,10 +186,9 @@ database:
 # With SQLite3 (which does not require a separate database server), your 
 # configuration would look something like the following (don't forget to install 
 # the sqlite3-ruby gem beforehand!):
-
-#database:
-#  adapter: sqlite3
-#  dbfile: /var/lib/casserver.db
+# database:
+#   adapter: sqlite3
+#   dbfile: /etc/rubycas-server/casserver.db
   
 
 ##### AUTHENTICATION ###########################################################
@@ -219,14 +218,29 @@ database:
 # 
 # Example:
 #
-#authenticator:
+authenticator:
+  class: CASServer::Authenticators::SQLDevise
+  database:
+    adapter: mysql
+    database: authcentral_development
+    user: root
+    server: localhost
+  user_table: accounts
+  username_column: username
+  password_column: encrypted_password
+  extra_attributes: authentication_token
+  salt_column: password_salt
+  sha1_stretches: 10
+  bcrypt_stretches: 10
+  rest_auth_site_key: '281e737fa076a5abb29e4436513ccd3efd06889f'
+  pepper: "6e4ad3c20417bbe229df33adeae9cc07333867139175433140b6df76fb3a81a2ffe9ff0181c9b18ae725167b2a0682dd978bf0bb2998f5a18e80880cf2a56d90"
+
+#
+# authenticator:
 #  class: CASServer::Authenticators::SQL
 #  database:
-#    adapter: mysql
-#    database: some_database_with_users_table
-#    username: root
-#    password: 
-#    host: localhost
+#    adapter: sqlite3
+#    database: /etc/rubycas-server/casserver.db
 #  user_table: users
 #  username_column: username
 #  password_column: password
@@ -253,35 +267,6 @@ database:
 #  password_column: password
 #  extra_attributes: full_name, access_level
 #
-# === Devise Bcrypt Authentication =======================================================
-#
-# This is a version of the SQL authenticator that works with Devise configured to use Bcrypt.
-# Before using this, you MUST configure Devise to use Bcrypt and set the same values for config.stretches and config.pepper in config/initializers/devise.rb.
-# config.
-#
-# If you need more info on how to use Devise:
-#
-# * git://github.com/plataformatec/devise.git
-#
-# Usage:
-#
-# authenticator:
-#   class: CASServer::Authenticators::SQLDevise
-#   database:
-#     adapter: mysql
-#     database: some_database_with_users_table
-#     user: root
-#     password:
-#     server: localhost
-#   user_table: users
-#   username_column: username
-#   email_column: email
-#   password_column: encrypted_password
-#   salt_column: password_salt
-#   encryptor: Bcrypt
-#   stretches: (same as config.stretches in config/initializers/devise.rb)
-#   pepper:    (same as config.pepper    in config/initializers/devise.rb)
-#   extra_attributes: authentication_token
 #
 #
 # === Google Authentication ====================================================
@@ -531,7 +516,7 @@ default_locale: en
 
 log:
   file: /var/log/casserver.log
-  level: INFO
+  level: DEBUG
 
 
 # If you want full database logging, uncomment this next section.
@@ -559,7 +544,7 @@ log:
 # or disable single-sign-out on a per-service basis, but this functionality
 # is planned for a future release.
 
-#enable_single_sign_out: true
+enable_single_sign_out: true
 
 
 ##### OTHER ####################################################################
@@ -590,3 +575,4 @@ log:
 # convert this to "jsmith".
 
 #downcase_username: true
+
